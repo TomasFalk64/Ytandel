@@ -150,36 +150,10 @@ def analysera_nyanser(vald_fil):
     skapa_kontrollbild(img, masker, vald_fil, resultat)   
     skriv_ut_resultat(vald_fil.name, resultat)
 
-def valj_fil_1(mapp_stig, bild_suffix):
-    """Hanterar filtrering av filer och användargränssnittet för val."""
-
-    filer = [f for f in mapp_stig.iterdir() 
-            if f.suffix.lower() in bild_suffix and not f.name.startswith("KONTROLL_")]
-    
-    if not filer:
-        print(f"\n[!] Inga bildfiler hittades i {mapp_stig}")
-        return None
-
-    print('\n' + '-'*30)
-    for i, f in enumerate(filer): print(f"[{i}] {f.name}")
-        
-    val = input("\nFil nummer (q för avsluta): ").lower()
-    if val == 'q':  return None
-
-    try:
-        index = int(val)
-        if 0 <= index < len(filer):
-            return filer[index]
-        else:
-            print(f"[!] Ogiltigt nummer. Välj 0-{len(filer)-1}.")
-    except ValueError:
-        print("[!] Ange ett nummer eller 'q'.")
-    
-    return None
 
 def valj_fil():
     """Öppnar en bläddraruta med en förinställd standardmapp och specifika filtyper."""
-    standard_mapp = Path(r"C:\Users\Asus\Documents\Git repos\ytandel")
+    standard_mapp = Path(r"C:\Users\Asus\Documents\Git repos\Ytandel")
     
     # Kontrollera om mappen finns, annars använd nuvarande arbetskatalog
     start_stig = standard_mapp if standard_mapp.exists() else Path.cwd()
@@ -188,10 +162,10 @@ def valj_fil():
     root.withdraw()
     root.attributes('-topmost', True)
 
-    # Här begränsar vi till bara png och jpg/jpeg
+    # Begränsa vi till bara png och jpg/jpeg
     filsokvag = filedialog.askopenfilename(
         initialdir=start_stig,
-        title="Välj skogsbild för analys",
+        title="Välj kartbild för analys",
         filetypes=[
             ("Bildfiler", "*.png *.jpg *.jpeg")
         ]
@@ -202,7 +176,6 @@ def valj_fil():
 
 
 def main():
-
     print('\nAnalysera bild -  hur stor del är skog med låga eller höga naturvärden')
     print('Välj bild från skogsmonitor, med högsta färg på kontinuitetslagret')
     while True:
@@ -210,14 +183,13 @@ def main():
         if input("\nNy  bild? (j/n): ").lower() != 'j':     break
 
         vald_fil = valj_fil()
-        
         if not vald_fil:
             print("Programmet avslutas.")
             break
             
-        if vald_fil and isinstance(vald_fil, Path):         analysera_nyanser(vald_fil) 
+        if vald_fil and isinstance(vald_fil, Path): 
+            analysera_nyanser(vald_fil) 
         
-            
 
 if __name__ == "__main__":
     main()
