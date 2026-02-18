@@ -1,6 +1,6 @@
 # Analys av naturvärdesandelar (Ytandel) 🌲
 
-Detta Python-verktyg är framtaget för att automatisera analysen av kartbilder, som är skärmdumpar från **Skogsmonitor**. 
+Verktyget är framtaget för att automatisera analysen av kartbilder, som är skärmdumpar från **Skogsmonitor**. 
 Programmet beräknar den procentuella fördelningen av olika naturvärdesklasser baserat på färgnyanser i bilden.
 
 ## Funktioner
@@ -27,6 +27,8 @@ Programmet mäter följande kategorier baserat på RGB-värden:
 
 ## Förutsättningar
 * Bibliotek i Python:   numpy   Pillow  tkinter  
+* Eller att man använder hemsidan istället
 
 ## Att tänka på
 * Skärmklippen bör ha högsta färgstyrka på kontinuitetslagret för att färgmatchningen ska fungera.
+* ytorna bör inte vara för små eller för stora, 1-5000 ha
