@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Areaanalys naturvärden</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="wrap">
+    <h1>Areaanalys – naturvärdesandelar</h1>
+
+    <section class="card">
+      <label class="row">
+        <span>Välj bild (PNG/JPG)</span>
+        <input id="file" type="file" accept="image/png,image/jpeg" />
+      </label>
+
+      <div class="row">
+        <button id="analyze" disabled>Analysera</button>
+        <a id="download" class="btn disabled" href="#" download>Ladda ner resultatbild</a>
+      </div>
+
+      <p class="hint">
+        Tips: Skärmklipp från Skogsmonitor med “högsta färgstyrka” på kontinuitetslagret ger bäst träff.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Resultat</h2>
+      <div id="status" class="status">Ingen fil vald.</div>
+
+      <table class="table" id="table" aria-label="Resultattabell">
+        <thead>
+          <tr>
+            <th>Kategori</th>
+            <th>% av Skog</th>
+            <th>% av Total</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Förhandsvisning</h2>
+      <canvas id="preview" class="canvas"></canvas>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
