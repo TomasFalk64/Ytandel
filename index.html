@@ -11,31 +11,37 @@
     <h1>Areaanalys – naturvärdesandelar</h1>
 
     <section class="card">
+      <p class="intro">
+        Verktyget analyserar skärmdumpar från Skogsmonitor och beräknar
+        hur stor andel av skogsytan som tillhör olika naturvärdesklasser, baserat på färgnyanser i bilden.
+      </p>
       <h2>Ladda bild</h2>
 
-      <div class="twoCols">
-        <div class="inputZone">
-          <div class="zoneTitle">Välj fil (PNG/JPG)</div>
-          <input id="file" type="file" accept="image/png,image/jpeg" />
-          
-        </div>
-
+      <div class="threeCols">
         <div class="inputZone">
           <div class="zoneTitle">
             Klistra in skärmklipp från
             <a href="https://karta.skogsmonitor.se/?background=Lantm%C3%A4terietTopowebb&lat=60.05272&layers=17&lng=17.66911&zoom=13"
               target="_blank"
-              rel="noopener noreferrer">
-              Skogsmonitor
-            </a>
+              rel="noopener noreferrer">Skogsmonitor</a>
           </div>
-
           <div id="pasteZone" class="pasteZone" tabindex="0">
             Klicka här och tryck Ctrl+V (Cmd+V på Mac)
           </div>
+          
         </div>
 
+        <div class="orCol">
+          <div class="orText">eller</div>
+        </div>
+
+        <div class="inputZone">
+          <div class="zoneTitle">Välj fil (PNG/JPG)</div>
+          <input id="file" type="file" accept="image/png,image/jpeg" />
+          
+        </div>
       </div>
+
 
       <div class="row">
         <a id="download" class="btn disabled" href="#" download>Ladda ner resultatbild</a>

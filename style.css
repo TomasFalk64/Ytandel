@@ -59,16 +59,38 @@ button, .btn{
   background: #fff;
 }
 
-/* Variant 3 layout */
-.twoCols{
+.threeCols{
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr auto 1fr;
   gap: 14px;
+  align-items: stretch;
 }
 
-@media (max-width: 700px){
-  .twoCols{ grid-template-columns: 1fr; }
+.orCol{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
 }
+
+.orText{
+  font-weight: 700;
+  color: #666;
+  text-transform: lowercase;
+}
+
+/* Mobil: stapla och centrera "eller" */
+@media (max-width: 700px){
+  .threeCols{
+    grid-template-columns: 1fr;
+  }
+  .orCol{
+    min-width: 0;
+  }
+}
+
+
+
 
 .inputZone{
   border: 2px dashed #cfd6e4;
@@ -116,3 +138,23 @@ button, .btn{
 .zoneTitle a:hover{
   color: #2f5fa0;        /* lite mörkare vid hover */
 }
+
+.intro{
+  margin: 10px auto 18px;
+  max-width: 620px;
+  line-height: 1.5;
+  color: #333;
+  font-size: 15px;
+  text-align: center;     /* detta centrerar texten */
+}
+
+
+.intro a{
+  color: #3b6fb6;
+  text-decoration: underline;
+}
+
+.intro a:hover{
+  color: #2f5fa0;
+}
+
