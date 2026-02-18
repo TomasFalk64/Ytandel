@@ -5,9 +5,34 @@ const elStatus = document.getElementById("status");
 const elTableBody = document.querySelector("#table tbody");
 const elPreview = document.getElementById("preview");
 const ctxPreview = elPreview.getContext("2d");
+const elPasteZone = document.getElementById("pasteZone");
+
 
 let selectedFile = null;
 let downloadUrl = null;
+
+elPasteZone?.addEventListener("paste", async (e) => {
+  const file = getImageFileFromPaste(e);
+  if (!file) {
+    setStatus("Ingen bild hittades i urklipp. Prova att ta en skärmdump och klistra in igen.");
+    return;
+  }
+
+  setStatus("Skärmdump mottagen. Analyserar...");
+  clearTable();
+  disableDownload();
+
+  try {
+    const img = await loadImageFromFile(file);
+    const result = analyzeAndRender(img, "skarmdump");
+    renderTable(result.rows);
+    setStatus("Klart. Förhandsvisning uppdaterad.");
+    enableDownload(result.blob, result.outName);
+  } catch (err) {
+    console.error(err);
+    setStatus("Fel: kunde inte analysera den inklistrade bilden.");
+  }
+});
 
 elFile.addEventListener("change", () => {
   selectedFile = elFile.files?.[0] ?? null;
@@ -263,3 +288,21 @@ function escapeHtml(s) {
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
   }[c]));
 }
+
+function getImageFileFromPaste(e) {
+  const dt = e.clipboardData;
+  if (!dt?.items) return null;
+
+  for (const item of dt.items) {
+    if (item.kind === "file" && item.type.startsWith("image/")) {
+      e.preventDefault();
+      const blob = item.getAsFile();
+      if (!blob) return null;
+      // Gör ett "File"-objekt så resten av koden kan återanvändas
+      return new File([blob], "skarmdump.png", { type: blob.type || "image/png" });
+    }
+  }
+  return null;
+}
+
+

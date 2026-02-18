@@ -40,3 +40,21 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .table th { font-weight: 700; }
 
 .canvas { width: 100%; max-width: 980px; border-radius: 12px; border: 1px solid #e6e8ee; background: #fff; }
+
+.pasteZone{
+  border: 2px dashed #cfd6e4;
+  border-radius: 12px;
+  padding: 18px;
+  background: #fafbfe;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #334;
+  outline: none;
+}
+.pasteZone:focus{
+  border-color: #8aa4ff;
+  box-shadow: 0 0 0 3px rgba(138,164,255,.25);
+}
