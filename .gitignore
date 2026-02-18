@@ -4,9 +4,7 @@
 *.csv
 
 # Exkludera tunga GIS-filer och mappar
-Kartor/
-processed/
-kalk_artobs/
+
 *.shp
 *.dbf
 *.prj
@@ -15,11 +13,7 @@ kalk_artobs/
 *.gpkg
 *.geojson
 *.png
+!preview.png
 *.tiff
 *.jpg
 
-
-# Python-skräp
-__pycache__/
-.venv/
-.ipynb_checkpoints/
