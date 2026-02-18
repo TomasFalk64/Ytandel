@@ -11,30 +11,35 @@
     <h1>Areaanalys – naturvärdesandelar</h1>
 
     <section class="card">
-    <h2>Ladda bild</h2>
+      <h2>Ladda bild</h2>
 
-    <div class="twoCols">
+      <div class="twoCols">
+        <div class="inputZone">
+          <div class="zoneTitle">Välj fil (PNG/JPG)</div>
+          <input id="file" type="file" accept="image/png,image/jpeg" />
+          
+        </div>
 
         <div class="inputZone">
-        <div class="zoneTitle">Välj fil</div>
-        <input id="file" type="file" accept="image/png,image/jpeg" />
+          <div class="zoneTitle">Klistra in skärmdump</div>
+          <div id="pasteZone" class="pasteZone" tabindex="0">
+            Klicka här och tryck Ctrl+V (Cmd+V på Mac)
+          </div>
+          
         </div>
+      </div>
 
-        <div class="inputZone">
-        <div class="zoneTitle">Klistra in skärmdump</div>
-        <div id="pasteZone" class="pasteZone" tabindex="0">
-            Klicka här och tryck Ctrl+V
-        </div>
-        </div>
-
-    </div>
-
-    <div class="row">
-        <button id="analyze" disabled>Analysera</button>
+      <div class="row">
         <a id="download" class="btn disabled" href="#" download>Ladda ner resultatbild</a>
-    </div>
-    </section>
+      </div>
 
+      <p class="hint">
+        Skärmklipp från Skogsmonitor med topografisk karta och “högsta färgstyrka” på kontinuitetslagret ger bäst träff.
+      </p>
+      <p class="hint">
+        Storleken på arean bör vara i spannet 1 - 5000 ha
+      </p>
+    </section>
 
     <section class="card">
       <h2>Resultat</h2>
