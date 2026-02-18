@@ -107,3 +107,12 @@ button, .btn{
   border-color: #8aa4ff;
   box-shadow: 0 0 0 3px rgba(138,164,255,.25);
 }
+
+.zoneTitle a{
+  color: #3b6fb6;        /* mildare blå */
+  text-decoration: underline;
+}
+
+.zoneTitle a:hover{
+  color: #2f5fa0;        /* lite mörkare vid hover */
+}
