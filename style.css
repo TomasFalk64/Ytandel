@@ -158,3 +158,25 @@ button, .btn{
   color: #2f5fa0;
 }
 
+.tolRow{
+  margin-top: 14px;
+  padding-top: 6px;
+}
+
+.tolLabel{
+  display: block;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+#tol{
+  width: 100%;
+}
+
+.tolHint{
+  margin-top: 6px;
+  font-size: 13px;
+  color: #445;
+}
+
+

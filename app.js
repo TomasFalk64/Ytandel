@@ -6,12 +6,24 @@ const elTableBody = document.querySelector("#table tbody");
 const elPreview = document.getElementById("preview");
 const ctxPreview = elPreview.getContext("2d");
 
+const elTol = document.getElementById("tol");
+const elTolVal = document.getElementById("tolVal");
+
 let downloadUrl = null;
+let lowTol = Number(elTol?.value ?? 20);
+
+if (elTol && elTolVal) {
+  elTolVal.textContent = String(lowTol);
+  elTol.addEventListener("input", () => {
+    lowTol = Number(elTol.value);
+    elTolVal.textContent = String(lowTol);
+  });
+}
 
 /* =======================
    INPUT: FILVAL (AUTO)
 ======================= */
-elFile.addEventListener("change", async () => {
+elFile?.addEventListener("change", async () => {
   const file = elFile.files?.[0] ?? null;
 
   if (!file) {
@@ -34,7 +46,7 @@ elPasteZone?.addEventListener("paste", async (e) => {
     setStatus("Ingen bild hittades i urklipp.");
     return;
   }
-  await runAnalysisFromFile(file, "skarmdump.png");
+  await runAnalysisFromFile(file, file.name);
 });
 
 /* =======================
@@ -50,11 +62,11 @@ async function runAnalysisFromFile(file, nameForOutput) {
     const result = analyzeAndRender(img, nameForOutput);
 
     renderTable(result.rows);
-    setStatus("Klart. Förhandsvisning uppdaterad.");
+    setStatus(`Klart. Profil: ${result.profileName === "HIGH" ? "hög" : "låg"}.`);
     enableDownload(result.blob, result.outName);
   } catch (err) {
     console.error(err);
-    setStatus("Fel: kunde inte analysera bilden.");
+    setStatus("Fel: kunde inte analysera bilden. (Se Console för detaljer.)");
   }
 }
 
@@ -89,7 +101,7 @@ function getImageFileFromPaste(e) {
       e.preventDefault();
       const blob = item.getAsFile();
       if (!blob) return null;
-      return new File([blob], "skärmdump.png", { type: blob.type || "image/png" });
+      return new File([blob], "skarmdump.png", { type: blob.type || "image/png" });
     }
   }
   return null;
@@ -111,6 +123,10 @@ function analyzeAndRender(img, originalName) {
   const imageData = wctx.getImageData(0, 0, width, height);
   const data = imageData.data;
 
+  // Avgör profil först, sen skriv status
+  const profile = detectContrastProfile(data);
+  setStatus(`Analyserar... Profil: ${profile === "HIGH" ? "hög" : "låg"}.`);
+
   const totalPixlar = width * height;
 
   // Räknare
@@ -119,49 +135,114 @@ function analyzeAndRender(img, originalName) {
     pMork = 0,
     pGron = 0;
 
-  // Kontrollfärger
+  // Kontrollfärger (resultatbildens färger)
   const C_ROSA = [222, 77, 131];
   const C_MELLAN = [167, 47, 163];
   const C_MORK = [84, 23, 111];
   const C_GRON = [34, 139, 34];
 
-  // Klassning pixelvis (samma logik som din Python)
-  for (let i = 0; i < data.length; i += 4) {
-    const R = data[i];
-    const G = data[i + 1];
-    const B = data[i + 2];
+  if (profile === "HIGH") {
+    // =========================
+    // GAMLA HÖGKONTRAST-LOOPEN
+    // =========================
+    for (let i = 0; i < data.length; i += 4) {
+      const R = data[i];
+      const G = data[i + 1];
+      const B = data[i + 2];
 
-    const temp_gron = G > R && G > B && G > 120;
-    const temp_rosa = R > 130 && R > G + 40 && R > B;
-    const temp_mellan = R > 130 && B > 130 && Math.abs(R - B) < 40 && R > G + 60;
-    const temp_mork = B > 80 && B > G + 40 && B > R && R > G + 10;
+      const temp_gron = G > R && G > B && G > 120;
+      const temp_rosa = R > 130 && R > G + 40 && R > B;
+      const temp_mellan = R > 130 && B > 130 && Math.abs(R - B) < 40 && R > G + 60;
+      const temp_mork = B > 80 && B > G + 40 && B > R && R > G + 10;
 
-    const mask_mork = temp_mork;
-    const mask_mellan = temp_mellan && !mask_mork;
-    const mask_rosa = temp_rosa && !mask_mellan && !mask_mork;
-    const mask_varda = mask_mork || mask_mellan || mask_rosa;
-    const mask_gron = temp_gron && !mask_varda;
+      const mask_mork = temp_mork;
+      const mask_mellan = temp_mellan && !mask_mork;
+      const mask_rosa = temp_rosa && !mask_mellan && !mask_mork;
+      const mask_varda = mask_mork || mask_mellan || mask_rosa;
+      const mask_gron = temp_gron && !mask_varda;
 
-    if (mask_mork) {
-      pMork++;
-      data[i] = C_MORK[0];
-      data[i + 1] = C_MORK[1];
-      data[i + 2] = C_MORK[2];
-    } else if (mask_mellan) {
-      pMellan++;
-      data[i] = C_MELLAN[0];
-      data[i + 1] = C_MELLAN[1];
-      data[i + 2] = C_MELLAN[2];
-    } else if (mask_rosa) {
-      pRosa++;
-      data[i] = C_ROSA[0];
-      data[i + 1] = C_ROSA[1];
-      data[i + 2] = C_ROSA[2];
-    } else if (mask_gron) {
-      pGron++;
-      data[i] = C_GRON[0];
-      data[i + 1] = C_GRON[1];
-      data[i + 2] = C_GRON[2];
+      if (mask_mork) {
+        pMork++;
+        data[i] = C_MORK[0];
+        data[i + 1] = C_MORK[1];
+        data[i + 2] = C_MORK[2];
+      } else if (mask_mellan) {
+        pMellan++;
+        data[i] = C_MELLAN[0];
+        data[i + 1] = C_MELLAN[1];
+        data[i + 2] = C_MELLAN[2];
+      } else if (mask_rosa) {
+        pRosa++;
+        data[i] = C_ROSA[0];
+        data[i + 1] = C_ROSA[1];
+        data[i + 2] = C_ROSA[2];
+      } else if (mask_gron) {
+        pGron++;
+        data[i] = C_GRON[0];
+        data[i + 1] = C_GRON[1];
+        data[i + 2] = C_GRON[2];
+      }
+    }
+  } else {
+    // =========================
+    // NY LÅGKONTRAST-LOOP
+    // =========================
+    const REF = {
+      rosa: [85, 62, 62],
+      mellan: [73, 55, 67],
+      mork: [58, 51, 58],
+      gron: [82, 93, 72],
+    };
+
+    const TOL = lowTol; // sliderstyrd tolerans
+
+    for (let i = 0; i < data.length; i += 4) {
+      const R = data[i];
+      const G = data[i + 1];
+      const B = data[i + 2];
+
+      // valfritt skydd mot nästan-vitt/svart UI
+      const lum = 0.2126 * R + 0.7152 * G + 0.0722 * B;
+      if (lum < 15 || lum > 245) continue;
+
+      const dR = rgbDist(R, G, B, ...REF.rosa);
+      const dM = rgbDist(R, G, B, ...REF.mellan);
+      const dK = rgbDist(R, G, B, ...REF.mork);
+      const dG = rgbDist(R, G, B, ...REF.gron);
+
+      const distances = [
+        ["rosa", dR],
+        ["mellan", dM],
+        ["mork", dK],
+        ["gron", dG],
+      ].sort((a, b) => a[1] - b[1]);
+
+      const best = distances[0][0];
+      const bestD = distances[0][1];
+
+      if (bestD > TOL) continue;
+
+      if (best === "mork") {
+        pMork++;
+        data[i] = C_MORK[0];
+        data[i + 1] = C_MORK[1];
+        data[i + 2] = C_MORK[2];
+      } else if (best === "mellan") {
+        pMellan++;
+        data[i] = C_MELLAN[0];
+        data[i + 1] = C_MELLAN[1];
+        data[i + 2] = C_MELLAN[2];
+      } else if (best === "rosa") {
+        pRosa++;
+        data[i] = C_ROSA[0];
+        data[i + 1] = C_ROSA[1];
+        data[i + 2] = C_ROSA[2];
+      } else if (best === "gron") {
+        pGron++;
+        data[i] = C_GRON[0];
+        data[i + 1] = C_GRON[1];
+        data[i + 2] = C_GRON[2];
+      }
     }
   }
 
@@ -171,8 +252,6 @@ function analyzeAndRender(img, originalName) {
   // ===== Resultatcanvas med minbredd + vit marginal =====
   const ram = 10;
   const panelH = 280;
-
-  // Justera efter smak: detta är "minsta tabellbredd"
   const MIN_OUT_W = 900;
 
   const outW = Math.max(width + ram * 2, MIN_OUT_W);
@@ -204,7 +283,6 @@ function analyzeAndRender(img, originalName) {
   const leftX = padX;
   const rightX = outW - padX;
 
-  // Font: klampad så den inte blir för stor på stora bilder
   const fontSize = clamp(Math.round(outW / 70), 12, 18);
   const titleSize = clamp(fontSize + 4, 14, 22);
 
@@ -216,17 +294,15 @@ function analyzeAndRender(img, originalName) {
 
   const headY = startY + titleSize + 14;
 
-  // Kolumner: högerjustera procentspalter för att undvika ihoptryck
-  const col3Right = rightX; // % av Total
-  const col2Right = Math.floor(outW * 0.70); // % av Skog (högerkant)
-  const col1Left = leftX; // Kategori
+  const col3Right = rightX;
+  const col2Right = Math.floor(outW * 0.70);
+  const col1Left = leftX;
 
   octx.font = `700 ${fontSize}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
   octx.fillText("Kategori", col1Left, headY);
   drawRightText(octx, "% av Skog", col2Right, headY);
   drawRightText(octx, "% av Total", col3Right, headY);
 
-  // linje under rubriker
   let y = headY + fontSize + 10;
   octx.strokeStyle = "#111";
   octx.lineWidth = 1;
@@ -237,7 +313,7 @@ function analyzeAndRender(img, originalName) {
   y += fontSize * 1.6;
 
   function sa(p, ref) {
-    if (ref <= 0) return "0.00%";
+    if (ref <= 0) return "0.0%";
     return (p / ref * 100).toFixed(1) + "%";
   }
 
@@ -245,16 +321,13 @@ function analyzeAndRender(img, originalName) {
     { t: "Rosa (Potentiell kontinuitet)", sk: sa(pRosa, totalSkog), to: sa(pRosa, totalPixlar), sum: false },
     { t: "Mellanlila (Naturvärde)", sk: sa(pMellan, totalSkog), to: sa(pMellan, totalPixlar), sum: false },
     { t: "Mörklila (Höga naturvärden)", sk: sa(pMork, totalSkog), to: sa(pMork, totalPixlar), sum: false },
-
-    // summeringar
     { t: "TOTAL VÄRDEAREAL", sk: sa(totalVarda, totalSkog), to: sa(totalVarda, totalPixlar), sum: true },
-    { t: "TOTAL SKOGSMARK", sk: "100.00%", to: sa(totalSkog, totalPixlar), sum: true },
+    { t: "TOTAL SKOGSMARK", sk: "100.0%", to: sa(totalSkog, totalPixlar), sum: true },
   ];
 
   const maxCatW = (col2Right - 18) - col1Left;
 
   for (const r of rows) {
-    // streck före summeringar
     if (r.t === "TOTAL VÄRDEAREAL") {
       const yy = y - Math.floor(fontSize * 0.4);
       octx.beginPath();
@@ -274,20 +347,18 @@ function analyzeAndRender(img, originalName) {
     y += fontSize + 10;
   }
 
-  // Förhandsvisning på sidan
+  // Förhandsvisning
   elPreview.width = outW;
   elPreview.height = outH;
   ctxPreview.clearRect(0, 0, outW, outH);
   ctxPreview.drawImage(out, 0, 0);
 
-  // Blob för nedladdning
   const outName = `Areaanalys_${stripExt(originalName)}.png`;
   const blob = canvasToBlob(out);
 
-  // UI-tabell (i sidan) – samma rader
   const uiRows = rows.map((r) => ({ name: r.t, skog: r.sk, total: r.to }));
 
-  return { blob, outName, rows: uiRows };
+  return { blob, outName, rows: uiRows, profileName: profile };
 }
 
 /* =======================
@@ -334,6 +405,27 @@ function clearCanvas() {
 /* =======================
    HJÄLPFUNKTIONER
 ======================= */
+function detectContrastProfile(data) {
+  let samples = 0;
+  let spreadSum = 0;
+
+  for (let i = 0; i < data.length; i += 160) {
+    const R = data[i], G = data[i + 1], B = data[i + 2];
+    const max = Math.max(R, G, B);
+    const min = Math.min(R, G, B);
+    spreadSum += (max - min);
+    samples++;
+  }
+
+  const avgSpread = spreadSum / Math.max(1, samples);
+  return avgSpread > 45 ? "HIGH" : "LOW";
+}
+
+function rgbDist(r1, g1, b1, r2, g2, b2) {
+  const dr = r1 - r2, dg = g1 - g2, db = b1 - b2;
+  return Math.sqrt(dr * dr + dg * dg + db * db);
+}
+
 function stripExt(name) {
   return String(name).replace(/\.[^.]+$/, "");
 }
@@ -350,8 +442,7 @@ function drawRightText(ctx, text, rightX, y) {
 function ellipsize(ctx, text, maxW) {
   if (ctx.measureText(text).width <= maxW) return text;
   const ell = "…";
-  let lo = 0,
-    hi = text.length;
+  let lo = 0, hi = text.length;
   while (lo < hi) {
     const mid = Math.floor((lo + hi) / 2);
     const t = text.slice(0, mid) + ell;
@@ -362,7 +453,6 @@ function ellipsize(ctx, text, maxW) {
 }
 
 function canvasToBlob(canvas) {
-  // DataURL → Blob (synk, funkar överallt)
   const dataUrl = canvas.toDataURL("image/png");
   const b64 = dataUrl.split(",")[1];
   const bin = atob(b64);
