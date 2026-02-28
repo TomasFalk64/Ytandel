@@ -55,6 +55,24 @@
       </div>
 
 
+      <div class="calRow">
+        <div class="tolLabel">Kalibrering för avvikande färger</div>
+        <div class="row">
+          <button id="calibStart" type="button">Kalibrera från förhandsvisning</button>
+          <button id="calibDone" type="button">Färdig</button>
+        </div>
+        <div id="calibStatus" class="tolHint">Ingen kalibrering aktiv.</div>
+        <div class="row">
+          <button id="calibClear" type="button" class="btnDangerLight" disabled>Rensa kalibrering</button>
+        </div>
+        <div class="swatches" aria-label="Kalibrerade färger">
+          <button type="button" class="swatchItem calibPick" data-calib-key="rosa"><span id="swRosa" class="swatch"></span><span>Rosa</span></button>
+          <button type="button" class="swatchItem calibPick" data-calib-key="mellan"><span id="swMellan" class="swatch"></span><span>Mellanlila</span></button>
+          <button type="button" class="swatchItem calibPick" data-calib-key="mork"><span id="swMork" class="swatch"></span><span>Mörklila</span></button>
+          <button type="button" class="swatchItem calibPick" data-calib-key="gron"><span id="swGron" class="swatch"></span><span>Grön</span></button>
+        </div>
+      </div>
+
       <div class="row">
         <a id="download" class="btn disabled" href="#" download>Ladda ner resultatbild</a>
       </div>
@@ -68,22 +86,6 @@
     </section>
 
     <section class="card">
-      <h2>Resultat</h2>
-      <div id="status" class="status">Ingen fil vald.</div>
-
-      <table class="table" id="table" aria-label="Resultattabell">
-        <thead>
-          <tr>
-            <th>Kategori</th>
-            <th>% av Skog</th>
-            <th>% av Total</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
-
-    <section class="card">
       <h2>Förhandsvisning</h2>
       <canvas id="preview" class="canvas"></canvas>
     </section>
@@ -92,3 +94,4 @@
   <script src="./app.js"></script>
 </body>
 </html>
+

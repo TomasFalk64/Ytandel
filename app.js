@@ -8,17 +8,79 @@ const ctxPreview = elPreview.getContext("2d");
 
 const elTol = document.getElementById("tol");
 const elTolVal = document.getElementById("tolVal");
+const elCalibStart = document.getElementById("calibStart");
+const elCalibDone = document.getElementById("calibDone");
+const elCalibClear = document.getElementById("calibClear");
+const elCalibStatus = document.getElementById("calibStatus");
+const elSwRosa = document.getElementById("swRosa");
+const elSwMellan = document.getElementById("swMellan");
+const elSwMork = document.getElementById("swMork");
+const elSwGron = document.getElementById("swGron");
+const elCalibPicks = document.querySelectorAll(".calibPick");
 
 let downloadUrl = null;
 let lowTol = Number(elTol?.value ?? 20);
+let currentSource = null;
+let isCalibrating = false;
+let pendingCalibration = {};
+let activeCalibration = null;
+let selectedCalibrationKey = null;
+
+const CALIBRATION_KEY = "ytandel.calibration.v1";
+const CALIBRATION_ORDER = ["rosa", "mellan", "mork", "gron"];
+const CALIBRATION_LABELS = {
+  rosa: "Rosa",
+  mellan: "Mellanlila",
+  mork: "Mörklila",
+  gron: "Grön",
+};
+const DEFAULT_REF_LOW = {
+  rosa: [85, 62, 62],
+  mellan: [73, 55, 67],
+  mork: [58, 51, 58],
+  gron: [82, 93, 72],
+};
+
+activeCalibration = loadCalibration();
+updateCalibrationUI();
 
 if (elTol && elTolVal) {
   elTolVal.textContent = String(lowTol);
   elTol.addEventListener("input", () => {
     lowTol = Number(elTol.value);
     elTolVal.textContent = String(lowTol);
+    if (currentSource && !isCalibrating) {
+      runAnalysisFromCurrent();
+    }
   });
 }
+
+elCalibStart?.addEventListener("click", startCalibration);
+elCalibDone?.addEventListener("click", finishCalibration);
+elCalibClear?.addEventListener("click", () => {
+  const hasSomethingToClear = hasCalibration(activeCalibration) || hasCalibration(pendingCalibration);
+  if (!hasSomethingToClear) return;
+  if (!window.confirm("Rensa kalibrering för aktuell bild?")) return;
+
+  activeCalibration = null;
+  pendingCalibration = {};
+  isCalibrating = false;
+  selectedCalibrationKey = null;
+  clearSavedCalibration();
+  updateCalibrationUI();
+  if (currentSource) runAnalysisFromCurrent();
+});
+elCalibPicks.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (!isCalibrating) return;
+    selectedCalibrationKey = btn.dataset.calibKey || null;
+    updateCalibrationUI();
+    if (selectedCalibrationKey) {
+      setCalibrationStatus(`Vald färg: ${CALIBRATION_LABELS[selectedCalibrationKey]}. Klicka sedan i bilden.`);
+    }
+  });
+});
+elPreview?.addEventListener("click", onPreviewClick);
 
 /* =======================
    INPUT: FILVAL (AUTO)
@@ -31,6 +93,11 @@ elFile?.addEventListener("change", async () => {
     clearTable();
     disableDownload();
     clearCanvas();
+    currentSource = null;
+    isCalibrating = false;
+    pendingCalibration = {};
+    selectedCalibrationKey = null;
+    updateCalibrationUI();
     return;
   }
 
@@ -59,10 +126,17 @@ async function runAnalysisFromFile(file, nameForOutput) {
 
   try {
     const img = await loadImageFromFile(file);
-    const result = analyzeAndRender(img, nameForOutput);
+    activeCalibration = null;
+    clearSavedCalibration();
+    isCalibrating = false;
+    pendingCalibration = {};
+    selectedCalibrationKey = null;
+    updateCalibrationUI();
+    currentSource = buildSourceData(img, nameForOutput);
+    const result = analyzeAndRender(currentSource.img, currentSource.name);
 
     renderTable(result.rows);
-    setStatus(`Klart. Profil: ${result.profileName === "HIGH" ? "hög" : "låg"}.`);
+    setStatus(makeDoneStatus(result.profileName));
     enableDownload(result.blob, result.outName);
   } catch (err) {
     console.error(err);
@@ -73,6 +147,31 @@ async function runAnalysisFromFile(file, nameForOutput) {
 /* =======================
    LÄS BILD
 ======================= */
+function runAnalysisFromCurrent() {
+  if (!currentSource) return;
+  const result = analyzeAndRender(currentSource.img, currentSource.name);
+  renderTable(result.rows);
+  setStatus(makeDoneStatus(result.profileName));
+  enableDownload(result.blob, result.outName);
+}
+
+function buildSourceData(img, name) {
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const cctx = c.getContext("2d", { willReadFrequently: true });
+  cctx.drawImage(img, 0, 0);
+  const sourceImageData = cctx.getImageData(0, 0, c.width, c.height);
+
+  return {
+    img,
+    name,
+    width: c.width,
+    height: c.height,
+    sourcePixels: sourceImageData.data,
+  };
+}
+
 function loadImageFromFile(file) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -125,7 +224,8 @@ function analyzeAndRender(img, originalName) {
 
   // Avgör profil först, sen skriv status
   const profile = detectContrastProfile(data);
-  setStatus(`Analyserar... Profil: ${profile === "HIGH" ? "hög" : "låg"}.`);
+  const usingCalibration = hasCalibration(activeCalibration);
+  setStatus(`Analyserar... Profil: ${profile === "HIGH" ? "hög" : "låg"}${usingCalibration ? " (kalibrerad)" : ""}.`);
 
   const totalPixlar = width * height;
 
@@ -141,7 +241,7 @@ function analyzeAndRender(img, originalName) {
   const C_MORK = [84, 23, 111];
   const C_GRON = [34, 139, 34];
 
-  if (profile === "HIGH") {
+  if (profile === "HIGH" && !usingCalibration) {
     // =========================
     // GAMLA HÖGKONTRAST-LOOPEN
     // =========================
@@ -187,12 +287,7 @@ function analyzeAndRender(img, originalName) {
     // =========================
     // NY LÅGKONTRAST-LOOP
     // =========================
-    const REF = {
-      rosa: [85, 62, 62],
-      mellan: [73, 55, 67],
-      mork: [58, 51, 58],
-      gron: [82, 93, 72],
-    };
+    const REF = usingCalibration ? getEffectiveRef(activeCalibration) : DEFAULT_REF_LOW;
 
     const TOL = lowTol; // sliderstyrd tolerans
 
@@ -365,6 +460,7 @@ function analyzeAndRender(img, originalName) {
    UI + DOWNLOAD
 ======================= */
 function renderTable(rows) {
+  if (!elTableBody) return;
   elTableBody.innerHTML = "";
   for (const r of rows) {
     const tr = document.createElement("tr");
@@ -389,11 +485,17 @@ function disableDownload() {
 }
 
 function setStatus(text) {
-  elStatus.textContent = text;
+  if (elStatus) {
+    elStatus.textContent = text;
+    return;
+  }
+  if (elCalibStatus && !isCalibrating) {
+    elCalibStatus.textContent = text;
+  }
 }
 
 function clearTable() {
-  elTableBody.innerHTML = "";
+  if (elTableBody) elTableBody.innerHTML = "";
 }
 
 function clearCanvas() {
@@ -405,6 +507,173 @@ function clearCanvas() {
 /* =======================
    HJÄLPFUNKTIONER
 ======================= */
+function makeDoneStatus(profileName) {
+  return `Klart. Profil: ${profileName === "HIGH" ? "hög" : "låg"}${hasCalibration(activeCalibration) ? " (kalibrerad)" : ""}.`;
+}
+
+function startCalibration() {
+  if (!currentSource) {
+    setCalibrationStatus("Ladda eller klistra in en bild först.");
+    return;
+  }
+
+  isCalibrating = true;
+  pendingCalibration = hasCalibration(activeCalibration) ? { ...activeCalibration } : {};
+  selectedCalibrationKey = "rosa";
+  disableDownload();
+  renderSourcePreview(currentSource);
+  setStatus("Kalibrering aktiv: välj färgruta och klicka i förhandsvisningen.");
+  setCalibrationStatus(`Välj färg och klicka i bilden. Vald: ${CALIBRATION_LABELS[selectedCalibrationKey]}.`);
+  updateCalibrationUI();
+}
+
+function finishCalibration() {
+  if (!isCalibrating) return;
+  const merged = { ...(hasCalibration(activeCalibration) ? activeCalibration : {}), ...pendingCalibration };
+  if (!hasCalibration(merged)) {
+    setCalibrationStatus("Ingen färg vald ännu. Välj minst en färg och klicka i bilden.");
+    return;
+  }
+  activeCalibration = merged;
+  pendingCalibration = {};
+  isCalibrating = false;
+  selectedCalibrationKey = null;
+  saveCalibration(activeCalibration);
+  updateCalibrationUI();
+  setCalibrationStatus("Kalibrering sparad. Ej valda färger använder standardvärden.");
+  if (currentSource) runAnalysisFromCurrent();
+}
+
+function onPreviewClick(e) {
+  if (!isCalibrating || !currentSource) return;
+  if (!selectedCalibrationKey) {
+    setCalibrationStatus("Välj färgruta först, klicka sedan i bilden.");
+    return;
+  }
+
+  const pos = toCanvasPos(e, elPreview);
+  if (!pos) return;
+
+  const x = Math.floor(pos.x);
+  const y = Math.floor(pos.y);
+  if (x < 0 || y < 0 || x >= currentSource.width || y >= currentSource.height) return;
+
+  const idx = (y * currentSource.width + x) * 4;
+  const ref = [
+    currentSource.sourcePixels[idx],
+    currentSource.sourcePixels[idx + 1],
+    currentSource.sourcePixels[idx + 2],
+  ];
+
+  pendingCalibration[selectedCalibrationKey] = ref;
+  updateCalibrationUI();
+  const merged = { ...(hasCalibration(activeCalibration) ? activeCalibration : {}), ...pendingCalibration };
+  const missing = CALIBRATION_ORDER.filter((k) => !isRgbTriplet(merged[k]));
+  setCalibrationStatus(`Sparad ${CALIBRATION_LABELS[selectedCalibrationKey]}. ${missing.length ? `Kvar: ${missing.map((k) => CALIBRATION_LABELS[k]).join(", ")}. ` : ""}Klicka Färdig när du vill avsluta.`);
+}
+
+function renderSourcePreview(source) {
+  elPreview.width = source.width;
+  elPreview.height = source.height;
+  ctxPreview.clearRect(0, 0, source.width, source.height);
+  ctxPreview.drawImage(source.img, 0, 0);
+}
+
+function toCanvasPos(e, canvas) {
+  const rect = canvas.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return null;
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY,
+  };
+}
+
+function hasCalibration(ref) {
+  return Boolean(ref && CALIBRATION_ORDER.some((k) => isRgbTriplet(ref[k])));
+}
+
+function isRgbTriplet(v) {
+  return Array.isArray(v) && v.length === 3;
+}
+
+function getEffectiveRef(ref) {
+  const out = { ...DEFAULT_REF_LOW };
+  if (!ref) return out;
+  for (const k of CALIBRATION_ORDER) {
+    if (isRgbTriplet(ref[k])) out[k] = ref[k];
+  }
+  return out;
+}
+
+function loadCalibration() {
+  try {
+    const raw = localStorage.getItem(CALIBRATION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return hasCalibration(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveCalibration(ref) {
+  try {
+    localStorage.setItem(CALIBRATION_KEY, JSON.stringify(ref));
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function clearSavedCalibration() {
+  try {
+    localStorage.removeItem(CALIBRATION_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function setCalibrationStatus(text) {
+  if (elCalibStatus) elCalibStatus.textContent = text;
+}
+
+function updateCalibrationUI() {
+  const refs = hasCalibration(activeCalibration) ? activeCalibration : {};
+  const draft = pendingCalibration;
+
+  paintSwatch(elSwRosa, draft.rosa || refs.rosa);
+  paintSwatch(elSwMellan, draft.mellan || refs.mellan);
+  paintSwatch(elSwMork, draft.mork || refs.mork);
+  paintSwatch(elSwGron, draft.gron || refs.gron);
+
+  elCalibPicks.forEach((btn) => {
+    const key = btn.dataset.calibKey;
+    btn.classList.toggle("active", isCalibrating && key === selectedCalibrationKey);
+  });
+
+  if (elCalibClear) {
+    const hasSomethingToClear = hasCalibration(activeCalibration) || hasCalibration(pendingCalibration);
+    elCalibClear.disabled = !hasSomethingToClear;
+  }
+
+  if (isCalibrating) return;
+  if (hasCalibration(activeCalibration)) {
+    setCalibrationStatus("Kalibrering aktiv: sparade färger används i analysen.");
+  } else {
+    setCalibrationStatus("Ingen kalibrering aktiv.");
+  }
+}
+
+function paintSwatch(el, rgb) {
+  if (!el) return;
+  if (!rgb) {
+    el.style.backgroundColor = "#fff";
+    return;
+  }
+  el.style.backgroundColor = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+}
+
 function detectContrastProfile(data) {
   let samples = 0;
   let spreadSum = 0;
@@ -470,3 +739,7 @@ function escapeHtml(s) {
     "'": "&#39;",
   }[c]));
 }
+
+
+
+

@@ -179,4 +179,54 @@ button, .btn{
   color: #445;
 }
 
+.calRow{
+  margin-top: 14px;
+  padding-top: 6px;
+}
+
+.swatches{
+  margin-top: 8px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.swatchItem{
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #334;
+  border: 1px solid #cfd6e4;
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.calibPick.active{
+  border-color: #3b6fb6;
+  box-shadow: 0 0 0 2px rgba(59,111,182,.18);
+}
+
+.btnDangerLight{
+  border-color: #e6b9b9;
+  color: #a34141;
+  background: #fff;
+}
+
+.btnDangerLight:disabled{
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.swatch{
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid #cfd6e4;
+  background: #fff;
+}
+
 
